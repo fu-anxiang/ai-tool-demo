@@ -1,0 +1,62 @@
+name: ai-tool-pipeline
+on: [push]
+
+jobs:
+  sandbox-check:
+    name: 1-sandbox-danger-precheck
+    runs-on: ubuntu-latest
+    container:
+      image: ai-sandbox:latest
+      options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - name: checkout (anonymous clone from gitea)
+        run: git clone http://localhost:3000/gitea_admin/ai-tool-demo.git .
+      - name: danger static scan
+        run: bash scripts/danger-scan.sh
+      - name: pytest inside sandbox container
+        run: |
+          pip install -q --break-system-packages -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+          python3 -m pytest tests/ -q
+      - name: malware live-fire (hardened one-off container)
+        run: |
+          docker run --rm --network none --cap-drop ALL \
+            --security-opt no-new-privileges --read-only \
+            --tmpfs /tmp:rw,size=64m --memory 512m --cpus 1 --pids-limit 64 \
+            ai-sandbox:latest timeout 30 bash -c \
+            "rm -rf / 2>&1 | head -1; echo LIVE-FIRE-OK"
+
+  build-push:
+    name: 2-build-and-push
+    needs: sandbox-check
+    runs-on: ubuntu-latest
+    container:
+      image: ai-sandbox:latest
+      options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - name: checkout
+        run: git clone http://localhost:3000/gitea_admin/ai-tool-demo.git .
+      - name: docker build
+        run: docker build -t 127.0.0.1:5000/ai-tool-demo:latest -t 127.0.0.1:5000/ai-tool-demo:${{ github.sha }} .
+      - name: docker push
+        run: docker push 127.0.0.1:5000/ai-tool-demo:latest && docker push 127.0.0.1:5000/ai-tool-demo:${{ github.sha }}
+
+  deploy:
+    name: 3-deploy-and-smoke
+    needs: build-push
+    runs-on: ubuntu-latest
+    container:
+      image: ai-sandbox:latest
+      options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - name: redeploy container
+        run: |
+          docker rm -f ai-tool-demo 2>/dev/null || true
+          docker run -d --name ai-tool-demo -p 8080:8080 127.0.0.1:5000/ai-tool-demo:latest
+          sleep 3
+      - name: smoke test
+        run: |
+          curl -s http://localhost:8080/health
+          echo
+          curl -s -X POST http://localhost:8080/analyze \
+            -H "Content-Type: application/json" -d '{"text":"I love this great tool"}'
+          echo
