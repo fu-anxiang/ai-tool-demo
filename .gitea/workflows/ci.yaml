@@ -8,8 +8,11 @@ jobs:
     container:
       image: 127.0.0.1:5000/ai-sandbox:latest
     steps:
-      - name: checkout (anonymous clone from gitea)
-        run: git clone http://localhost:3000/gitea_admin/ai-tool-demo.git .
+      - name: checkout (clone via bridge gateway -> host gitea)
+        run: |
+          GW=$(docker inspect "$(hostname)" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$v.Gateway}}{{end}}')
+          echo "bridge gateway: $GW"
+          git clone "http://$GW:3000/gitea_admin/ai-tool-demo.git" .
       - name: danger static scan
         run: bash scripts/danger-scan.sh
       - name: pytest inside sandbox container
@@ -31,8 +34,11 @@ jobs:
     container:
       image: 127.0.0.1:5000/ai-sandbox:latest
     steps:
-      - name: checkout
-        run: git clone http://localhost:3000/gitea_admin/ai-tool-demo.git .
+      - name: checkout (clone via bridge gateway -> host gitea)
+        run: |
+          GW=$(docker inspect "$(hostname)" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$v.Gateway}}{{end}}')
+          echo "bridge gateway: $GW"
+          git clone "http://$GW:3000/gitea_admin/ai-tool-demo.git" .
       - name: docker build
         run: docker build -t 127.0.0.1:5000/ai-tool-demo:latest -t 127.0.0.1:5000/ai-tool-demo:${{ github.sha }} .
       - name: docker push
@@ -50,10 +56,8 @@ jobs:
           docker rm -f ai-tool-demo 2>/dev/null || true
           docker run -d --name ai-tool-demo -p 8080:8080 127.0.0.1:5000/ai-tool-demo:latest
           sleep 3
-      - name: smoke test
+      - name: smoke test (via docker exec into deployed container)
         run: |
-          curl -s http://localhost:8080/health
-          echo
-          curl -s -X POST http://localhost:8080/analyze \
-            -H "Content-Type: application/json" -d '{"text":"I love this great tool"}'
-          echo
+          docker exec ai-tool-demo python3 -c "import urllib.request; print('HEALTH:', urllib.request.urlopen('http://localhost:8080/health').read().decode())"
+          docker exec ai-tool-demo python3 -c "import urllib.request,json; print('ANALYZE:', urllib.request.urlopen(urllib.request.Request('http://localhost:8080/analyze', data=json.dumps({'text':'I love this great tool'}).encode(), headers={'Content-Type':'application/json'})).read().decode())"
+          echo SMOKE-OK
