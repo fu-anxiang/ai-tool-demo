@@ -7,7 +7,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: 127.0.0.1:5000/ai-sandbox:latest
-      options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
     steps:
       - name: checkout (anonymous clone from gitea)
         run: git clone http://localhost:3000/gitea_admin/ai-tool-demo.git .
@@ -31,7 +30,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: 127.0.0.1:5000/ai-sandbox:latest
-      options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
     steps:
       - name: checkout
         run: git clone http://localhost:3000/gitea_admin/ai-tool-demo.git .
@@ -46,7 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: 127.0.0.1:5000/ai-sandbox:latest
-      options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
     steps:
       - name: redeploy container
         run: |
