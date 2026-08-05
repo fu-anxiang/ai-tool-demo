@@ -6,7 +6,7 @@ jobs:
     name: 1-sandbox-danger-precheck
     runs-on: ubuntu-latest
     container:
-      image: ai-sandbox:latest
+      image: 127.0.0.1:5000/ai-sandbox:latest
       options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
     steps:
       - name: checkout (anonymous clone from gitea)
@@ -30,7 +30,7 @@ jobs:
     needs: sandbox-check
     runs-on: ubuntu-latest
     container:
-      image: ai-sandbox:latest
+      image: 127.0.0.1:5000/ai-sandbox:latest
       options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
     steps:
       - name: checkout
@@ -45,7 +45,7 @@ jobs:
     needs: build-push
     runs-on: ubuntu-latest
     container:
-      image: ai-sandbox:latest
+      image: 127.0.0.1:5000/ai-sandbox:latest
       options: --network host --volume /var/run/docker.sock:/var/run/docker.sock
     steps:
       - name: redeploy container
