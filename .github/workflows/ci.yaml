@@ -61,9 +61,8 @@ jobs:
             --title "Release ${{ github.ref_name }}" \
             --notes "## AI Tool Demo ${{ github.ref_name }}
 
-**Docker 镜像**
-- Image: \`ghcr.io/${{ github.repository }}:${{ github.ref_name }}\`
-- Pull: \`docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}\`
+          Docker image: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          Pull command: docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}
 
-**最近提交**
-$NOTES"
+          Recent commits:
+          $NOTES"
