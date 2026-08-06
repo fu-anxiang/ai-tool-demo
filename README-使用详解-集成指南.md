@@ -137,9 +137,9 @@ cd /opt/ci/repos/ai-tool-demo && git remote rename origin gitea 2>/dev/null || t
 ```
 之后每次：`bash git-sync.sh "feat: xxx"` —— 一条命令同时完成部署和上传 GitHub。
 
-### 4.4 在 GitHub 上跑同样的流水线（可选）
-- 把 `.gitea/workflows/ci.yaml` 复制为 `.github/workflows/ci.yaml`
-- 差异点：
+### 4.4 在 GitHub 上跑同样的流水线（✅ 已配置启用）
+- ✅ 已配置：`.github/workflows/ci.yaml`（ci-publish 工作流，push main/tag/PR 触发）
+- 差异点（GitHub 版实现）：
   1. GitHub Actions runner 有完整网络：checkout 用 `actions/checkout@v4`，无需网关 hack
   2. 本地 registry 改为 GitHub Container Registry（ghcr.io）或 Docker Hub，需配置 secrets
   3. 部署步骤改为"构建产物上传"或"触发远端部署"（GitHub runner 不共享你的本机 Docker）
