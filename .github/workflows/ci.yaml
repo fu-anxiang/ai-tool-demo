@@ -44,14 +44,26 @@ jobs:
           docker push $IMG:${{ github.sha }}
 
   release-tag:
-    name: 3-tag-release-note
+    name: 3-create-github-release
     needs: build-push
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: show release info
+      - uses: actions/checkout@v4
+      - name: create GitHub Release (gh release create)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== GitHub Actions 发布流水线 ==="
-          echo "tag: ${{ github.ref_name }}"
-          echo "image: ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
-          echo "拉取: docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
+          NOTES=$(git log --oneline -10)
+          gh release create "${{ github.ref_name }}" \
+            --title "Release ${{ github.ref_name }}" \
+            --notes "## AI Tool Demo ${{ github.ref_name }}
+
+**Docker 镜像**
+- Image: \`ghcr.io/${{ github.repository }}:${{ github.ref_name }}\`
+- Pull: \`docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}\`
+
+**最近提交**
+$NOTES"
