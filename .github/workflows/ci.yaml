@@ -1,0 +1,57 @@
+name: ci-publish
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  sandbox-check:
+    name: 1-sandbox-danger-precheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: danger static scan
+        run: bash scripts/danger-scan.sh
+      - name: pytest (malware pattern detection)
+        run: |
+          pip install --break-system-packages -q -r requirements.txt
+          python3 -m pytest tests/ -q
+
+  build-push:
+    name: 2-build-and-push-ghcr
+    needs: sandbox-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: login ghcr.io (GITHUB_TOKEN)
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: build image
+        run: |
+          IMG=ghcr.io/${{ github.repository }}
+          docker build -t $IMG:latest -t $IMG:${{ github.sha }} .
+      - name: push to ghcr
+        run: |
+          IMG=ghcr.io/${{ github.repository }}
+          docker push $IMG:latest
+          docker push $IMG:${{ github.sha }}
+
+  release-tag:
+    name: 3-tag-release-note
+    needs: build-push
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: show release info
+        run: |
+          echo "=== GitHub Actions 发布流水线 ==="
+          echo "tag: ${{ github.ref_name }}"
+          echo "image: ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
+          echo "拉取: docker pull ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
